@@ -56,7 +56,7 @@
 
 #include <pcap.h>
 
-#include "src/api.h"
+#include "hep_api.h"
 #include "core_hep.h"
 
 pthread_t call_thread;   
@@ -758,14 +758,13 @@ int statistic(char *buf)
         return 1;
 }
 
-int handlerPipe(void) {
+static void handlerPipe(int signum) {
 
         printf("SIGPIPE... trying to reconnect...\n");
-        return 1;
 }
 
 
-int sigPipe(void)
+void sigPipe(int signum)
 {
 
         struct sigaction new_action;
@@ -777,7 +776,7 @@ int sigPipe(void)
 
         if( sigaction (SIGPIPE, &new_action, NULL) == -1) {
                 perror("Failed to set new Handle");
-                return -1;
+                return;
         }
 
 }
