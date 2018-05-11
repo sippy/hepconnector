@@ -54,8 +54,6 @@
 #include <netinet/ip6.h>
 #endif /* USE_IPV6 */
 
-#include <pcap.h>
-
 #include "hep_api.h"
 #include "core_hep.h"
 
