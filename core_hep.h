@@ -36,7 +36,6 @@
 #include <netinet/ip6.h>
 #endif /* USE_IPV6 */
 
-
 #ifdef USE_ZLIB
 #include <zlib.h>
 #endif /* USE_ZLIB */
@@ -48,24 +47,29 @@
 #endif /* USE_SSL */  
 
 
-int sock;
-long initfails = 0;
-struct addrinfo *ai;
-struct addrinfo hints[1] = {{ 0 }};
-char *capt_host  = "10.0.0.1";
-char *capt_port  = "9060";
-char *capt_proto = "udp";
-char *capt_password;
-int   capt_id = 101;
-int hep_version = 3;
-int usessl = 0;
-int pl_compress = 0;
+struct hep_ctx {
+    int sock;
+    long initfails;
+    struct addrinfo *ai;
+    struct addrinfo hints[1];
+    char *capt_host;
+    char *capt_port;
+    char *capt_proto;
+    char *capt_password;
+    int   capt_id;
+    int hep_version;
+    int usessl;
+    int pl_compress;
 
-static int sendPacketsCount = 0;
+    int sendPacketsCount;
 
 #ifdef USE_SSL
-SSL *ssl;
-SSL_CTX *ctx;
+    SSL *ssl;
+    SSL_CTX *ctx;
+#endif /* USE_SSL */
+};
+
+#ifdef USE_SSL
 SSL_CTX* initCTX(void);
 #endif /* USE_SSL */
 
