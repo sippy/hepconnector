@@ -59,6 +59,7 @@
 
 pthread_mutex_t lock;
 
+#if 0
 static struct hep_ctx ctx = {
         .initfails = 0,
         .hints = {{ 0 }},
@@ -71,8 +72,13 @@ static struct hep_ctx ctx = {
         .pl_compress = 0,
         .sendPacketsCount = 0
 };
+#endif
 
-int send_hep_basic (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
+#ifdef USE_SSL
+static int initSSL(struct hep_ctx *ctp);
+#endif
+
+int send_hep_basic (struct hep_ctx *ctp, rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
 
 	unsigned char *zipData = NULL;
         int sendzip = 0;
@@ -81,7 +87,7 @@ int send_hep_basic (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
         int status = 0;
         unsigned long dlen;
 
-        if(ctx.pl_compress && ctx.hep_version == 3) {
+        if(ctp->pl_compress && ctp->hep_version == 3) {
                 //dlen = len/1000+len*len+13;
 
                 dlen = compressBound(len);
@@ -103,19 +109,19 @@ int send_hep_basic (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
 
 #endif /* USE_ZLIB */
 
-        switch(ctx.hep_version) {
+        switch(ctp->hep_version) {
         
             case 3:
-		return send_hepv3(rcinfo, sendzip  ? zipData : data , len, sendzip);
+		return send_hepv3(ctp, rcinfo, sendzip  ? zipData : data , len, sendzip);
                 break;
                 
             case 2:            
             case 1:        
-                return send_hepv2(rcinfo, data, len);                    
+                return send_hepv2(ctp, rcinfo, data, len);                    
                 break;
                 
             default:
-                fprintf(stderr, "Unsupported HEP version [%d]\n", ctx.hep_version);                
+                fprintf(stderr, "Unsupported HEP version [%d]\n", ctp->hep_version);                
                 break;
         }
 
@@ -124,7 +130,7 @@ int send_hep_basic (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
         return 0;
 }
 
-int send_hepv3 (rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsigned int sendzip) {
+int send_hepv3 (struct hep_ctx *ctp, rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsigned int sendzip) {
 
     struct hep_generic *hg=NULL;
     void* buffer;
@@ -226,7 +232,7 @@ int send_hepv3 (rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsign
     /* Capture ID */
     hg->capt_id.chunk.vendor_id = htons(0x0000);
     hg->capt_id.chunk.type_id   = htons(0x000c);
-    hg->capt_id.data = htons(ctx.capt_id);
+    hg->capt_id.data = htons(ctp->capt_id);
     hg->capt_id.chunk.length = htons(sizeof(hg->capt_id));
 
     /* Payload */
@@ -237,14 +243,14 @@ int send_hepv3 (rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsign
     tlen = sizeof(struct hep_generic) + len + iplen + sizeof(hep_chunk_t);
 
     /* auth key */
-    if(ctx.capt_password != NULL) {
+    if(ctp->capt_password != NULL) {
 
           tlen += sizeof(hep_chunk_t);
           /* Auth key */
           authkey_chunk.vendor_id = htons(0x0000);
           authkey_chunk.type_id   = htons(0x000e);
-          authkey_chunk.length    = htons(sizeof(authkey_chunk) + strlen(ctx.capt_password));
-          tlen += strlen(ctx.capt_password);
+          authkey_chunk.length    = htons(sizeof(authkey_chunk) + strlen(ctp->capt_password));
+          tlen += strlen(ctp->capt_password);
     }
 
     /* total */
@@ -284,14 +290,14 @@ int send_hepv3 (rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsign
 #endif
 
     /* AUTH KEY CHUNK */
-    if(ctx.capt_password != NULL) {
+    if(ctp->capt_password != NULL) {
 
         memcpy((void*) buffer+buflen, &authkey_chunk,  sizeof(struct hep_chunk));
         buflen += sizeof(struct hep_chunk);
 
         /* Now copying payload self */
-        memcpy((void*) buffer+buflen, ctx.capt_password, strlen(ctx.capt_password));
-        buflen+=strlen(ctx.capt_password);
+        memcpy((void*) buffer+buflen, ctp->capt_password, strlen(ctp->capt_password));
+        buflen+=strlen(ctp->capt_password);
     }
 
     /* PAYLOAD CHUNK */
@@ -305,18 +311,18 @@ int send_hepv3 (rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsign
     /* make sleep after 100 errors */
      if(errors > 50) {
         fprintf(stderr, "HEP server is down... retrying after sleep...\n");
-	if(!ctx.usessl) {
+	if(!ctp->usessl) {
 	     sleep(2);
-             if(init_hepsocket_blocking()) { 
-				ctx.initfails++; 	
+             if(init_hepsocket_blocking(ctp)) { 
+				ctp->initfails++; 	
 	     	     }
 	     	     errors=0;
         }
 #ifdef USE_SSL
         else {
 		sleep(2);
-		 if(initSSL()) {
-	 	  	ctx.initfails++;
+		 if(initSSL(ctp)) {
+	 	  	ctp->initfails++;
 	    		}
 	    		errors=0;
        	 }
@@ -325,7 +331,7 @@ int send_hepv3 (rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsign
      }
 
     /* send this packet out of our socket */
-    if(send_data(buffer, buflen)) {
+    if(send_data(ctp, buffer, buflen)) {
         errors++;    
     }
 
@@ -337,7 +343,7 @@ int send_hepv3 (rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsign
 }
 
 
-int send_hepv2 (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
+int send_hepv2 (struct hep_ctx *ctp, rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
 
     void* buffer;            
     struct hep_hdr hdr;
@@ -350,7 +356,7 @@ int send_hepv2 (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
 #endif /* USE IPV6 */
 
     /* Version && proto */
-    hdr.hp_v = ctx.hep_version;
+    hdr.hp_v = ctp->hep_version;
     hdr.hp_f = rcinfo->ip_family;
     hdr.hp_p = rcinfo->ip_proto;
     hdr.hp_sport = htons(rcinfo->src_port); /* src port */
@@ -375,11 +381,11 @@ int send_hepv2 (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
     totlen += sizeof(struct hep_hdr);
     totlen += len;
 
-    if(ctx.hep_version == 2) {
+    if(ctp->hep_version == 2) {
     	totlen += sizeof(struct hep_timehdr);
         hep_time.tv_sec = rcinfo->time_sec;
         hep_time.tv_usec = rcinfo->time_usec;
-        hep_time.captid = ctx.capt_id;
+        hep_time.captid = ctp->capt_id;
     }
 
     /*buffer for ethernet frame*/
@@ -419,7 +425,7 @@ int send_hepv2 (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
      }
 
      /* Version 2 has timestamp, captnode ID */
-     if(ctx.hep_version == 2) {
+     if(ctp->hep_version == 2) {
      	/* TIMING  */
         memcpy((void*)buffer + buflen, &hep_time, sizeof(struct hep_timehdr));
         buflen += sizeof(struct hep_timehdr);
@@ -431,18 +437,18 @@ int send_hepv2 (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
      /* make sleep after 100 errors*/
      if(errors > 50) {
         fprintf(stderr, "HEP server is down... retrying after sleep...\n");
-	if(!ctx.usessl) {
+	if(!ctp->usessl) {
 	     sleep(2);
-             if(init_hepsocket_blocking()) { 
-				ctx.initfails++;
+             if(init_hepsocket_blocking(ctp)) { 
+				ctp->initfails++;
 	     	     }
 	     	     errors=0;
         }
 #ifdef USE_SSL
         else {
 	    sleep(2);
-	    	    if(initSSL()) {
-				ctx.initfails++;  
+	    	    if(initSSL(ctp)) {
+				ctp->initfails++;  
 	    	    }
 	    	    errors=0;
         }
@@ -451,7 +457,7 @@ int send_hepv2 (rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
      }
 
      /* send this packet out of our socket */
-     if(send_data(buffer, buflen)) {
+     if(send_data(ctp, buffer, buflen)) {
              errors++;    
      }
 
@@ -466,21 +472,21 @@ error:
 }
 
 
-int send_data (void *buf, unsigned int len) {
+int send_data (struct hep_ctx *ctp, void *buf, unsigned int len) {
 
 	/* send this packet out of our socket */
 	//int r = 0;
 	void * p = buf;
 	//int sentbytes = 0;
 
-	if(!ctx.usessl) {
-	        	if(send(ctx.sock, p, len, 0) == -1) {
+	if(!ctp->usessl) {
+	        	if(send(ctp->sock, p, len, 0) == -1) {
 	    	        	printf("send error\n");
             			return -1;
 	        	}
-          	ctx.sendPacketsCount++;
+          	ctp->sendPacketsCount++;
 	  /* while (sentbytes < len){
-	        	if( (r = send(ctx.sock, p, len - sentbytes, MSG_NOSIGNAL )) == -1) {
+	        	if( (r = send(ctp->sock, p, len - sentbytes, MSG_NOSIGNAL )) == -1) {
 	    	        	printf("send error\n");
         			return -1;
 	        	}
@@ -490,16 +496,16 @@ int send_data (void *buf, unsigned int len) {
         		sentbytes += r;
 	        	p += r;
         	}
-        	ctx.sendPacketsCount++;
+        	ctp->sendPacketsCount++;
 	  */
         }
 #ifdef USE_SSL
         else {
-            if(SSL_write(ssl, buf, len) < 0) {            
+            if(SSL_write(ctp->ssl, buf, len) < 0) {            
 		fprintf(stderr,"capture: couldn't re-init ssl socket\r\n");
                 return -1;                
             }
-	    ctx.sendPacketsCount++;
+	    ctp->sendPacketsCount++;
         }
 #endif        
 	/* RESET ERRORS COUNTER */
@@ -507,7 +513,7 @@ int send_data (void *buf, unsigned int len) {
 }
 
 
-void  select_loop (void)
+void  select_loop (struct hep_ctx *ctp)
 {
 	int n = 0;
 	int initfails = 0;
@@ -516,22 +522,22 @@ void  select_loop (void)
 	
 	
 	FD_ZERO(&readfd);
-	FD_SET(ctx.sock, &readfd);
+	FD_SET(ctp->sock, &readfd);
 	while (1){
-		if (select(ctx.sock+1, &readfd, 0, 0, NULL) < 0){
+		if (select(ctp->sock+1, &readfd, 0, 0, NULL) < 0){
 			perror("select failed\n");
 			handler(1);
 		}
-		if (FD_ISSET(ctx.sock, &readfd)){
-			ioctl(ctx.sock, FIONREAD, &n);
+		if (FD_ISSET(ctp->sock, &readfd)){
+			ioctl(ctp->sock, FIONREAD, &n);
 			if (n == 0){
 				/* server disconnected*/
-		         if(!ctx.usessl) {
-                   if(init_hepsocket()) initfails++;                                
+		         if(!ctp->usessl) {
+                   if(init_hepsocket(ctp)) initfails++;                                
              }
 #ifdef USE_SSL             
              else {
-                  if(initSSL()) initfails++;
+                  if(initSSL(ctp)) initfails++;
              }
 #endif /* USE_SSL */             
 
@@ -553,7 +559,7 @@ void  select_loop (void)
 }
 
 
-int init_hepsocket (void) {
+int init_hepsocket (struct hep_ctx *ctp) {
 
     struct timeval tv; 
     socklen_t lon;
@@ -561,44 +567,44 @@ int init_hepsocket (void) {
     fd_set myset;
     int valopt, res, ret = 0, s;
 
-    if(ctx.sock) close(ctx.sock);
+    if(ctp->sock) close(ctp->sock);
 
-    if ((s = getaddrinfo(ctx.capt_host, ctx.capt_port, ctx.hints, &ctx.ai)) != 0) {            
+    if ((s = getaddrinfo(ctp->capt_host, ctp->capt_port, ctp->hints, &ctp->ai)) != 0) {            
             fprintf(stderr, "capture: getaddrinfo: %s\n", gai_strerror(s));
             return 2;
     }
 
-    if((ctx.sock = socket(ctx.ai->ai_family, ctx.ai->ai_socktype, ctx.ai->ai_protocol)) < 0) {
+    if((ctp->sock = socket(ctp->ai->ai_family, ctp->ai->ai_socktype, ctp->ai->ai_protocol)) < 0) {
              fprintf(stderr,"Sender socket creation failed: %s\n", strerror(errno));
              return 1;
     }
 
     // Set non-blocking 
-    if((arg = fcntl(ctx.sock, F_GETFL, NULL)) < 0) { 
+    if((arg = fcntl(ctp->sock, F_GETFL, NULL)) < 0) { 
         fprintf(stderr, "Error fcntl(..., F_GETFL) (%s)\n", strerror(errno)); 
-        close(ctx.sock);        
+        close(ctp->sock);        
         return 1;
     } 
     arg |= O_NONBLOCK; 
-    if( fcntl(ctx.sock, F_SETFL, arg) < 0) { 
+    if( fcntl(ctp->sock, F_SETFL, arg) < 0) { 
         fprintf(stderr, "Error fcntl(..., F_SETFL) (%s)\n", strerror(errno)); 
-        close(ctx.sock);        
+        close(ctp->sock);        
         return 1; 
     }        
 
-    if((res = connect(ctx.sock, ctx.ai->ai_addr, (socklen_t)(ctx.ai->ai_addrlen))) < 0) {
+    if((res = connect(ctp->sock, ctp->ai->ai_addr, (socklen_t)(ctp->ai->ai_addrlen))) < 0) {
 	if (errno == EINPROGRESS) { 
 	        do { 
 	           tv.tv_sec = 5; 
 	           tv.tv_usec = 0; 
         	   FD_ZERO(&myset); 
-	           FD_SET(ctx.sock, &myset); 
+	           FD_SET(ctp->sock, &myset); 
 
-        	   res = select(ctx.sock + 1 , NULL, &myset, NULL, &tv); 
+        	   res = select(ctp->sock + 1 , NULL, &myset, NULL, &tv); 
            
 	           if (res < 0 && errno != EINTR) { 
         	      fprintf(stderr, "Error connecting %d - %s\n", errno, strerror(errno)); 
-		      close(ctx.sock); 
+		      close(ctp->sock); 
 		      ret = 1;
 		      break;
 	           } 
@@ -606,21 +612,21 @@ int init_hepsocket (void) {
         	      // Socket selected for write 
               
 	              lon = sizeof(int); 
-        	      if (getsockopt(ctx.sock, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon) < 0) { 
-			 close(ctx.sock); 
+        	      if (getsockopt(ctp->sock, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon) < 0) { 
+			 close(ctp->sock); 
         	         fprintf(stderr, "Error in getsockopt() %d - %s\n", errno, strerror(errno)); 
         	         ret = 2;
 	              } 	
         	      // Check the value returned... 
 	              if (valopt) { 
-			 close(ctx.sock); 
+			 close(ctp->sock); 
 	                 fprintf(stderr, "Error in delayed connection() %d - %s\n", valopt, strerror(valopt)); 
 	                 ret = 3;
         	      } 
 	              break; 
 	           } 
         	   else { 
-		      close(ctx.sock); 
+		      close(ctp->sock); 
 	              fprintf(stderr, "Timeout in select() - Cancelling!\n"); 
 	              ret = 4; 
 	              break;
@@ -632,26 +638,26 @@ int init_hepsocket (void) {
     return ret;
 }
 
-int init_hepsocket_blocking (void) {
+int init_hepsocket_blocking (struct hep_ctx *ctp) {
 
     int s;
     struct timeval tv;
     fd_set myset;
 
-    if(ctx.sock) close(ctx.sock);
+    if(ctp->sock) close(ctp->sock);
 
-    if ((s = getaddrinfo(ctx.capt_host, ctx.capt_port, ctx.hints, &ctx.ai)) != 0) {            
+    if ((s = getaddrinfo(ctp->capt_host, ctp->capt_port, ctp->hints, &ctp->ai)) != 0) {            
             fprintf(stderr, "capture: getaddrinfo: %s\n", gai_strerror(s));
             return 2;
     }
 
-    if((ctx.sock = socket(ctx.ai->ai_family, ctx.ai->ai_socktype, ctx.ai->ai_protocol)) < 0) {
+    if((ctp->sock = socket(ctp->ai->ai_family, ctp->ai->ai_socktype, ctp->ai->ai_protocol)) < 0) {
              fprintf(stderr,"Sender socket creation failed: %s\n", strerror(errno));
              return 1;
     }
 
-     if (connect(ctx.sock, ctx.ai->ai_addr, (socklen_t)(ctx.ai->ai_addrlen)) == -1) {
-         select(ctx.sock + 1 , NULL, &myset, NULL, &tv);
+     if (connect(ctp->sock, ctp->ai->ai_addr, (socklen_t)(ctp->ai->ai_addrlen)) == -1) {
+         select(ctp->sock + 1 , NULL, &myset, NULL, &tv);
          if (errno != EINPROGRESS) {
              fprintf(stderr,"Sender socket creation failed: %s\n", strerror(errno));
              return 1;    
@@ -666,7 +672,7 @@ int init_hepsocket_blocking (void) {
 
 #ifdef USE_SSL
 SSL_CTX* initCTX(void) {
-        SSL_METHOD *method;
+        const SSL_METHOD *method;
         SSL_CTX *ctx;
 
         OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
@@ -704,45 +710,45 @@ void showCerts(SSL* ssl) {
                 fprintf(stderr,"No certificates.\n");
 }
 
-int initSSL(void) {
+static int initSSL(struct hep_ctx *ctp) {
 
         long ctx_options;
 
-        /* if(ssl) SSL_free(ssl);
-        if(ctx) SSL_CTX_free(ctx);
+        /* if(ctp->ssl) SSL_free(ctp->ssl);
+        if(ctp->ctx) SSL_CTX_free(ctp->ctx);
         */
 
-        if(init_hepsocket_blocking()) {
+        if(init_hepsocket_blocking(ctp)) {
                 fprintf(stderr,"capture: couldn't init hep socket\r\n");
                 return 1;
         }
 
 
-        ctx = initCTX();
+        ctp->ctx = initCTX();
 
         /* workaround bug openssl */
         ctx_options = SSL_OP_ALL;   
         ctx_options |= SSL_OP_NO_SSLv2;
-        SSL_CTX_set_options(ctx, ctx_options);
+        SSL_CTX_set_options(ctp->ctx, ctx_options);
                 
         /*extra*/
-        SSL_CTX_ctrl(ctx, BIO_C_SET_NBIO, 1, NULL);
+        SSL_CTX_ctrl(ctp->ctx, BIO_C_SET_NBIO, 1, NULL);
 
         /* create new SSL connection state */
-        ssl = SSL_new(ctx);
+        ctp->ssl = SSL_new(ctp->ctx);
 
-        SSL_set_connect_state(ssl);
+        SSL_set_connect_state(ctp->ssl);
 
         /* attach socket */
-        SSL_set_fd(ssl, ctx.sock);    /* attach the socket descriptor */
+        SSL_set_fd(ctp->ssl, ctp->sock);    /* attach the socket descriptor */
                 
         /* perform the connection */
-        if ( SSL_connect(ssl) == -1 )  {
+        if ( SSL_connect(ctp->ssl) == -1 )  {
               ERR_print_errors_fp(stderr);
               return 1;
         }                 
                           
-        showCerts(ssl);   
+        showCerts(ctp->ssl);   
 
         return 0;
 }
@@ -758,9 +764,9 @@ char *description(void)
         return description;
 }
 
-int statistic(char *buf)
+int statistic(struct hep_ctx *ctp, char *buf)
 {
-        snprintf(buf, 1024, "Statistic of CORE_HEP module:\r\nSend packets: [%i]\r\n", ctx.sendPacketsCount);
+        snprintf(buf, 1024, "Statistic of CORE_HEP module:\r\nSend packets: [%i]\r\n", ctp->sendPacketsCount);
         return 1;
 }
 

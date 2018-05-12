@@ -75,11 +75,11 @@ SSL_CTX* initCTX(void);
 
 void handler(int value);
 
-int send_hepv3 (rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsigned int sendzip);
-int send_hepv2 (rc_info_t *rcinfo, unsigned char *data, unsigned int len);
-int send_data (void *buf, unsigned int len);
-int init_hepsocket_blocking (void);
-int init_hepsocket (void);
+int send_hepv3 (struct hep_ctx *, rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsigned int sendzip);
+int send_hepv2 (struct hep_ctx *, rc_info_t *rcinfo, unsigned char *data, unsigned int len);
+int send_data (struct hep_ctx *, void *buf, unsigned int len);
+int init_hepsocket_blocking (struct hep_ctx *);
+int init_hepsocket (struct hep_ctx *);
 void sigPipe(int);
 
 /* HEPv3 types */
