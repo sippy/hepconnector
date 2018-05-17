@@ -17,7 +17,7 @@
  *
  */
 
-typedef struct rc_info {
+struct rc_info {
     uint8_t     ip_family;  /* IP family IPv6 IPv4 */
     uint8_t     ip_proto;   /* IP protocol ID : tcp/udp */
     uint8_t     proto_type; /* SIP: 0x001, SDP: 0x03*/    
@@ -27,4 +27,4 @@ typedef struct rc_info {
     uint16_t    dst_port;
     uint32_t    time_sec;
     uint32_t    time_usec;
-} rc_info_t;
+};

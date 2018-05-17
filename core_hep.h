@@ -46,6 +46,8 @@
 
 #endif /* USE_SSL */  
 
+struct rc_info;
+typedef struct rc_info rc_info_t;
 
 struct hep_ctx {
     int sock;
@@ -185,9 +187,6 @@ static hep_generic_t HDR_HEP = {
 };
 */
 
-
-/* Ethernet / IP / UDP header IPv4 */
-const int udp_payload_offset = 14+20+8;
 
 struct hep_hdr{
     u_int8_t hp_v;            /* version */
