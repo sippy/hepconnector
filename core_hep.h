@@ -56,7 +56,6 @@ struct hep_ctx {
     struct addrinfo hints[1];
     char *capt_host;
     char *capt_port;
-    char *capt_proto;
     char *capt_password;
     int   capt_id;
     int hep_version;
