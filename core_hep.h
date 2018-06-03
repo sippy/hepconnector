@@ -5,8 +5,9 @@
  *  Duplicate SIP messages in Homer Encapulate Protocol [HEP] [ipv6 version]
  *
  *  Author: Alexandr Dubovikov <alexandr.dubovikov@gmail.com>
- *  (C) Homer Project 2012 (http://www.sipcapture.org)
  *
+ *  Copyright (c) 2018 Maksym Sobolyev <sobomax@sippysoft.com>
+ *  Copyright (c) Homer Project 2012 (http://www.sipcapture.org)
  *  Copyright (c) 2010-2016 <Alexandr Dubovikov> 
  *  All rights reserved.
  *
@@ -62,6 +63,9 @@ struct hep_ctx {
     int usessl;
     int pl_compress;
 
+    struct hep_generic *hep_hdr;
+    u_int16_t hdr_len;
+
     int sendPacketsCount;
 
 #ifdef USE_SSL
@@ -76,6 +80,8 @@ SSL_CTX* initCTX(void);
 
 void handler(int value);
 
+int hep_gen_fill(struct hep_ctx *, rc_info_t *);
+int hep_gen_append(struct hep_ctx *, u_int16_t, u_int16_t, void *, u_int16_t);
 int send_hepv3 (struct hep_ctx *, rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsigned int sendzip);
 int send_hepv2 (struct hep_ctx *, rc_info_t *rcinfo, unsigned char *data, unsigned int len);
 int send_data (struct hep_ctx *, void *buf, unsigned int len);
@@ -89,6 +95,7 @@ struct hep_chunk {
        u_int16_t vendor_id;
        u_int16_t type_id;
        u_int16_t length;
+       u_int8_t data[0];
 } __attribute__((packed));
 
 typedef struct hep_chunk hep_chunk_t;
