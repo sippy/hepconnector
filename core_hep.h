@@ -80,6 +80,7 @@ SSL_CTX* initCTX(void);
 
 void handler(int value);
 
+void hep_gen_dtor(struct hep_ctx *);
 int hep_gen_fill(struct hep_ctx *, rc_info_t *);
 int hep_gen_append(struct hep_ctx *, u_int16_t, u_int16_t, void *, u_int16_t);
 int send_hepv3 (struct hep_ctx *, rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsigned int sendzip);

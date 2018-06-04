@@ -118,6 +118,16 @@ int send_hep_basic (struct hep_ctx *ctp, rc_info_t *rcinfo, unsigned char *data,
         return 0;
 }
 
+void
+hep_gen_dtor(struct hep_ctx *ctp)
+{
+
+    if (ctp->hep_hdr != NULL) {
+        free(ctp->hep_hdr);
+        ctp->hep_hdr = NULL;
+    }
+}
+
 int hep_gen_fill(struct hep_ctx *ctp, rc_info_t *rcinfo)
 {
     struct hep_generic *hg;
