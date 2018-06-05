@@ -50,6 +50,25 @@
 struct rc_info;
 typedef struct rc_info rc_info_t;
 
+#define HEP_VID_GEN	0x0000
+
+#define HEP_TID_PF	0x0001
+#define HEP_TID_PID	0x0002
+#define HEP_TID_SA4	0x0003
+#define HEP_TID_DA4	0x0004
+#define HEP_TID_SA6	0x0005
+#define HEP_TID_DA6	0x0006
+#define HEP_TID_SP	0x0007
+#define HEP_TID_DP	0x0008
+#define HEP_TID_TS_S	0x0009
+#define HEP_TID_TS_MS	0x000a
+#define HEP_TID_PT	0x000b
+#define HEP_TID_CAID	0x000c
+/* 0x00d uint16 keep alive timer (sec) */
+#define HEP_TID_AKEY	0x000e
+#define HEP_TID_PL_RAW	0x000f
+#define HEP_TID_PL_GZ	0x0010
+
 struct hep_ctx {
     int sock;
     long initfails;
