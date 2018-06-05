@@ -52,23 +52,23 @@ typedef struct rc_info rc_info_t;
 
 #define HEP_VID_GEN	0x0000
 
-#define HEP_TID_PF	0x0001
-#define HEP_TID_PID	0x0002
-#define HEP_TID_SA4	0x0003
-#define HEP_TID_DA4	0x0004
-#define HEP_TID_SA6	0x0005
-#define HEP_TID_DA6	0x0006
-#define HEP_TID_SP	0x0007
-#define HEP_TID_DP	0x0008
-#define HEP_TID_TS_S	0x0009
-#define HEP_TID_TS_MS	0x000a
-#define HEP_TID_PT	0x000b
-#define HEP_TID_CAID	0x000c
-/* 0x00d uint16 keep alive timer (sec) */
-#define HEP_TID_AKEY	0x000e
-#define HEP_TID_PL_RAW	0x000f
-#define HEP_TID_PL_GZ	0x0010
-#define HEP_TID_CID	0x0011
+#define HEP_TID_PF	0x0001	/* IP protocol family */
+#define HEP_TID_PID	0x0002	/* IP protocol ID */
+#define HEP_TID_SA4	0x0003	/* IPv4 source address */
+#define HEP_TID_DA4	0x0004	/* IPv4 destination address */
+#define HEP_TID_SA6	0x0005	/* IPv6 source address */
+#define HEP_TID_DA6	0x0006	/* IPv6 destination address */
+#define HEP_TID_SP	0x0007	/* protocol source port (UDP, TCP, SCTP) */
+#define HEP_TID_DP	0x0008	/* protocol destination port (UDP, TCP, SCTP) */
+#define HEP_TID_TS_S	0x0009	/* timestamp, seconds since 01/01/1970 (epoch) */
+#define HEP_TID_TS_MS	0x000a	/* timestamp microseconds offset (added to timestamp) */
+#define HEP_TID_PT	0x000b	/* protocol type (SIP/H323/RTP/MGCP/M2UA) */
+#define HEP_TID_CAID	0x000c	/* capture agent ID (202, 1201, 2033...) */
+		     /* 0x000d     keep alive timer (sec) */
+#define HEP_TID_AKEY	0x000e	/* authenticate key (plain text / TLS connection) */
+#define HEP_TID_PL_RAW	0x000f	/* captured uncompressed packet payload */
+#define HEP_TID_PL_GZ	0x0010	/* captured compressed payload (gzip/inflate) */
+#define HEP_TID_CID	0x0011	/* Internal correlation id */
 
 struct hep_ctx {
     int sock;
