@@ -68,6 +68,7 @@ typedef struct rc_info rc_info_t;
 #define HEP_TID_AKEY	0x000e
 #define HEP_TID_PL_RAW	0x000f
 #define HEP_TID_PL_GZ	0x0010
+#define HEP_TID_CID	0x0011
 
 struct hep_ctx {
     int sock;
