@@ -24,6 +24,8 @@
  *
  */
 
+//#define USE_ZLIB
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -39,6 +41,10 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
+
+#if defined(RTPP_DEBUG)
+#include <assert.h>
+#endif
 
 #ifndef __FAVOR_BSD
 #define __FAVOR_BSD
@@ -66,57 +72,33 @@ pthread_mutex_t lock;
 static int initSSL(struct hep_ctx *ctp);
 #endif
 
-int send_hep_basic (struct hep_ctx *ctp, rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
-
-	unsigned char *zipData = NULL;
-        int sendzip = 0;
+static int send_data(struct hep_ctx *, void *buf, unsigned int len);
 
 #ifdef USE_ZLIB
-        int status = 0;
-        unsigned long dlen;
+static void *
+compress_data(void *data, unsigned int *len)
+{
+    void *zipData;
+    unsigned long dlen;
+    int status;
 
-        if(ctp->pl_compress && ctp->hep_version == 3) {
-                //dlen = len/1000+len*len+13;
+    dlen = compressBound(*len);
 
-                dlen = compressBound(len);
+    zipData  = malloc(dlen); /* give a little bit memmory */
+    if (zipData == NULL)
+        return (NULL);
 
-                zipData  = malloc(dlen); /* give a little bit memmory */
+    /* do compress */
+    status = compress(zipData, &dlen, data, *len);
+    if (status != Z_OK) {
+        free(zipData);
+        return (NULL);
+    }
+    *len = dlen;
 
-                /* do compress */
-                status = compress( zipData, &dlen, data, len );
-                if( status != Z_OK ){
-                      fprintf(stderr, "data couldn't be compressed\n");
-                      sendzip = 0;
-                      if(zipData) free(zipData); /* release */
-                }                   
-                else {              
-                        sendzip = 1;
-                        len = dlen;
-                }
-        }
-
-#endif /* USE_ZLIB */
-
-        switch(ctp->hep_version) {
-        
-            case 3:
-		return send_hepv3(ctp, rcinfo, sendzip  ? zipData : data , len, sendzip);
-                break;
-                
-            case 2:            
-            case 1:        
-                return send_hepv2(ctp, rcinfo, data, len);                    
-                break;
-                
-            default:
-                fprintf(stderr, "Unsupported HEP version [%d]\n", ctp->hep_version);                
-                break;
-        }
-
-	if(zipData) free(zipData);
-        
-        return 0;
+    return (zipData);
 }
+#endif /* USE_ZLIB */
 
 void
 hep_gen_dtor(struct hep_ctx *ctp)
@@ -229,14 +211,35 @@ hep_gen_append(struct hep_ctx *ctp, u_int16_t vendor_id,
         return (rv); \
     }
 
-int send_hepv3 (struct hep_ctx *ctp, rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsigned int sendzip) {
-
+int
+send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
+{
     hep_chunk_ip4_t src_ip4, dst_ip4;
 #ifdef USE_IPV6
     hep_chunk_ip6_t src_ip6, dst_ip6;
 #endif
     static int errors = 0;
+    int sendzip;
+#ifdef USE_ZLIB
+    void *dtp;
+#endif
 
+#if defined(RTPP_DEBUG)
+    assert(ctp->hep_version == 3);
+#endif
+    sendzip = 0;
+    if (ctp->pl_compress) {
+#ifdef USE_ZLIB
+        dtp = compress_data(data, &len);
+        if (dtp != NULL) {
+            sendzip =  1;
+        }
+#else
+#if defined(RTPP_DEBUG)
+        abort();
+#endif
+#endif /* USE_ZLIB */
+    }
     /* IPv4 */
     if(rcinfo->ip_family == AF_INET) {
         /* SRC IP */
@@ -303,136 +306,7 @@ int send_hepv3 (struct hep_ctx *ctp, rc_info_t *rcinfo, unsigned char *data, uns
     return 1;
 }
 
-int send_hepv2 (struct hep_ctx *ctp, rc_info_t *rcinfo, unsigned char *data, unsigned int len) {
-
-    void* buffer;            
-    struct hep_hdr hdr;
-    struct hep_timehdr hep_time;
-    struct hep_iphdr hep_ipheader;
-    unsigned int totlen=0, buflen=0;
-    static int errors=0;
-#ifdef USE_IPV6
-    struct hep_ip6hdr hep_ip6header;
-#endif /* USE IPV6 */
-
-    /* Version && proto */
-    hdr.hp_v = ctp->hep_version;
-    hdr.hp_f = rcinfo->ip_family;
-    hdr.hp_p = rcinfo->ip_proto;
-    hdr.hp_sport = htons(rcinfo->src_port); /* src port */
-    hdr.hp_dport = htons(rcinfo->dst_port); /* dst port */
-
-    /* IP version */    
-    switch (hdr.hp_f) {        
-                case AF_INET:
-                    totlen  = sizeof(struct hep_iphdr);
-                    break;
-#ifdef USE_IPV6                    
-                case AF_INET6:
-                    totlen = sizeof(struct hep_ip6hdr);
-                    break;
-#endif /* USE IPV6 */
-                    
-    }
-    
-    hdr.hp_l = totlen + sizeof(struct hep_hdr);
-    
-    /* COMPLETE LEN */
-    totlen += sizeof(struct hep_hdr);
-    totlen += len;
-
-    if(ctp->hep_version == 2) {
-    	totlen += sizeof(struct hep_timehdr);
-        hep_time.tv_sec = rcinfo->time_sec;
-        hep_time.tv_usec = rcinfo->time_usec;
-        hep_time.captid = ctp->capt_id;
-    }
-
-    /*buffer for ethernet frame*/
-    buffer = (void*)malloc(totlen);
-    if (buffer==0){
-    	fprintf(stderr,"ERROR: out of memory\n");
-        goto error;
-    }
-
-    /* copy hep_hdr */
-    memcpy((void*) buffer, &hdr, sizeof(struct hep_hdr));
-    buflen = sizeof(struct hep_hdr);
-
-    switch (hdr.hp_f) {
-
-    	case AF_INET:
-        	/* Source && Destination ipaddresses*/
-        	inet_pton(AF_INET, rcinfo->src_ip, &hep_ipheader.hp_src);
-        	inet_pton(AF_INET, rcinfo->dst_ip, &hep_ipheader.hp_dst);
-
-                /* copy hep ipheader */
-                memcpy((void*)buffer + buflen, &hep_ipheader, sizeof(struct hep_iphdr));
-                buflen += sizeof(struct hep_iphdr);
-
-                break;
-#ifdef USE_IPV6
-	case AF_INET6:
-
-                inet_pton(AF_INET6, rcinfo->src_ip, &hep_ip6header.hp6_src);
-                inet_pton(AF_INET6, rcinfo->dst_ip, &hep_ip6header.hp6_dst);
-
-                /* copy hep6 ipheader */
-                memcpy((void*)buffer + buflen, &hep_ip6header, sizeof(struct hep_ip6hdr));
-                buflen += sizeof(struct hep_ip6hdr);
-                break;
-#endif /* USE_IPV6 */
-     }
-
-     /* Version 2 has timestamp, captnode ID */
-     if(ctp->hep_version == 2) {
-     	/* TIMING  */
-        memcpy((void*)buffer + buflen, &hep_time, sizeof(struct hep_timehdr));
-        buflen += sizeof(struct hep_timehdr);
-     }
-
-     memcpy((void *)(buffer + buflen) , (void*)(data), len);
-     buflen +=len;
-
-     /* make sleep after 100 errors*/
-     if(errors > 50) {
-        fprintf(stderr, "HEP server is down... retrying after sleep...\n");
-	if(!ctp->usessl) {
-	     sleep(2);
-             if(init_hepsocket_blocking(ctp)) { 
-				ctp->initfails++;
-	     	     }
-	     	     errors=0;
-        }
-#ifdef USE_SSL
-        else {
-	    sleep(2);
-	    	    if(initSSL(ctp)) {
-				ctp->initfails++;  
-	    	    }
-	    	    errors=0;
-        }
-#endif /* USE SSL */
-
-     }
-
-     /* send this packet out of our socket */
-     if(send_data(ctp, buffer, buflen)) {
-             errors++;    
-     }
-
-     /* FREE */
-     if(buffer) free(buffer);
-
-     return 1;
-
-error:
-     if(buffer) free(buffer);
-     return 0;                     
-}
-
-
-int send_data (struct hep_ctx *ctp, void *buf, unsigned int len) {
+static int send_data (struct hep_ctx *ctp, void *buf, unsigned int len) {
 
 	/* send this packet out of our socket */
 	//int r = 0;
@@ -712,44 +586,4 @@ static int initSSL(struct hep_ctx *ctp) {
 
         return 0;
 }
-
 #endif /* use SSL */
-
-
-char *description(void)
-{
-        printf("Loaded description\n");
-        char *description = "test description";
-        
-        return description;
-}
-
-int statistic(struct hep_ctx *ctp, char *buf)
-{
-        snprintf(buf, 1024, "Statistic of CORE_HEP module:\r\nSend packets: [%i]\r\n", ctp->sendPacketsCount);
-        return 1;
-}
-
-static void handlerPipe(int signum) {
-
-        printf("SIGPIPE... trying to reconnect...\n");
-}
-
-
-void sigPipe(int signum)
-{
-
-        struct sigaction new_action;
-
-        /* sigation structure */
-        new_action.sa_handler = handlerPipe;
-        sigemptyset (&new_action.sa_mask);
-        new_action.sa_flags = 0;
-
-        if( sigaction (SIGPIPE, &new_action, NULL) == -1) {
-                perror("Failed to set new Handle");
-                return;
-        }
-
-}
-

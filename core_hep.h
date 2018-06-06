@@ -27,6 +27,7 @@
 */
 
 #define USE_IPV6
+//#define USE_ZLIB
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -103,12 +104,9 @@ void handler(int value);
 void hep_gen_dtor(struct hep_ctx *);
 int hep_gen_fill(struct hep_ctx *, rc_info_t *);
 int hep_gen_append(struct hep_ctx *, u_int16_t, u_int16_t, void *, u_int16_t);
-int send_hepv3 (struct hep_ctx *, rc_info_t *rcinfo, unsigned char *data, unsigned int len, unsigned int sendzip);
-int send_hepv2 (struct hep_ctx *, rc_info_t *rcinfo, unsigned char *data, unsigned int len);
-int send_data (struct hep_ctx *, void *buf, unsigned int len);
-int init_hepsocket_blocking (struct hep_ctx *);
-int init_hepsocket (struct hep_ctx *);
-void sigPipe(int);
+int send_hep(struct hep_ctx *, rc_info_t *rcinfo, void *data, unsigned int len);
+int init_hepsocket_blocking(struct hep_ctx *);
+int init_hepsocket(struct hep_ctx *);
 
 /* HEPv3 types */
 
