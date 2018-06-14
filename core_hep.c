@@ -247,6 +247,7 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
     int sendzip;
 #ifdef USE_ZLIB
     void *dtp;
+    int freezip;
 #endif
 
 #if defined(RTPP_DEBUG)
@@ -255,9 +256,13 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
     sendzip = 0;
     if (ctp->pl_compress) {
 #ifdef USE_ZLIB
+        freezip = 0;
         dtp = compress_data(data, &len);
         if (dtp != NULL) {
             sendzip =  1;
+            if (dtp != data)
+                 freezip = 1;
+            data = dtp;
         }
 #else
 #if defined(RTPP_DEBUG)
@@ -327,7 +332,11 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
     if(send_data(ctp, ctp->hep_hdr, ctp->hdr_len)) {
         errors++;    
     }
-    
+
+#ifdef USE_ZLIB
+    if (freezip)
+        free(data);
+#endif
     return 1;
 }
 
