@@ -248,15 +248,17 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
 #ifdef USE_ZLIB
     void *dtp;
     int freezip;
+
+    freezip = 0;
 #endif
 
 #if defined(RTPP_DEBUG)
     assert(ctp->hep_version == 3);
 #endif
+
     sendzip = 0;
     if (ctp->pl_compress) {
 #ifdef USE_ZLIB
-        freezip = 0;
         dtp = compress_data(data, &len);
         if (dtp != NULL) {
             sendzip =  1;
@@ -294,7 +296,7 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
 #endif
 
     /* Payload */
-    HGA_O_RET(ctp, HEP_VID_GEN, sendzip ? htons(HEP_TID_PL_GZ) : htons(HEP_TID_PL_RAW), data, len, 0);
+    HGA_O_RET(ctp, HEP_VID_GEN, sendzip ? HEP_TID_PL_GZ : HEP_TID_PL_RAW, data, len, 0);
 
     /* auth key */
     if(ctp->capt_password != NULL) {
@@ -337,7 +339,7 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
     if (freezip)
         free(data);
 #endif
-    return 1;
+    return (0);
 }
 
 static int send_data (struct hep_ctx *ctp, void *buf, unsigned int len) {
