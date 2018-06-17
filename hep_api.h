@@ -49,12 +49,20 @@
  *+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  */
 
+struct in_addr;
+struct in6_addr;
+
+union rc_naddr {
+  struct in_addr *p4;
+  struct in6_addr *p6;
+};
+
 struct rc_info {
     uint8_t     ip_family;  /* IP family IPv6 IPv4 */
     uint8_t     ip_proto;   /* IP protocol ID : tcp/udp */
     uint8_t     proto_type; /* SIP: 0x001, SDP: 0x03*/    
-    char        *src_ip;
-    char        *dst_ip;
+    union rc_naddr src;
+    union rc_naddr dst;
     uint16_t    src_port;
     uint16_t    dst_port;
     uint32_t    time_sec;
