@@ -239,10 +239,6 @@ hep_gen_append(struct hep_ctx *ctp, u_int16_t vendor_id,
 int
 send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
 {
-    hep_chunk_ip4_t src_ip4, dst_ip4;
-#ifdef USE_IPV6
-    hep_chunk_ip6_t src_ip6, dst_ip6;
-#endif
     static int errors = 0;
     int sendzip;
 #ifdef USE_ZLIB
@@ -275,23 +271,19 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
     /* IPv4 */
     if(rcinfo->ip_family == AF_INET) {
         /* SRC IP */
-        inet_pton(AF_INET, rcinfo->src_ip, &src_ip4.data);
-        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_SA4, &src_ip4.data, sizeof(src_ip4.data), 0);
+        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_SA4, rcinfo->src.p4, sizeof(*rcinfo->src.p4), 0);
 
         /* DST IP */
-        inet_pton(AF_INET, rcinfo->dst_ip, &dst_ip4.data);
-        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_DA4, &dst_ip4.data, sizeof(dst_ip4.data), 0);
+        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_DA4, rcinfo->dst.p4, sizeof(*rcinfo->dst.p4), 0);
     }
 #ifdef USE_IPV6
       /* IPv6 */
     else if(rcinfo->ip_family == AF_INET6) {
         /* SRC IPv6 */
-        inet_pton(AF_INET6, rcinfo->src_ip, &src_ip6.data);
-        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_SA6, &src_ip6.data, sizeof(src_ip6.data), 0);
+        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_SA6, rcinfo->src.p6, sizeof(*rcinfo->src.p6), 0);
         
         /* DST IPv6 */
-        inet_pton(AF_INET6, rcinfo->dst_ip, &dst_ip6.data);
-        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_DA6, &dst_ip6.data, sizeof(dst_ip6.data), 0);
+        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_DA6, rcinfo->dst.p6, sizeof(*rcinfo->dst.p6), 0);
     }
 #endif
 
