@@ -86,6 +86,7 @@
 
 #include "hep_api.h"
 #include "core_hep.h"
+#include "hepconnector.h"
 
 #if defined(RTPP_MODULE)
 #include "rtpp_module.h"
@@ -373,53 +374,6 @@ static int send_data (struct hep_ctx *ctp, void *buf, unsigned int len) {
 	/* RESET ERRORS COUNTER */
 	return 0;
 }
-
-
-void  select_loop (struct hep_ctx *ctp)
-{
-	int n = 0;
-	int initfails = 0;
-	fd_set readfd;
-	time_t prevtime = time(NULL);
-	
-	
-	FD_ZERO(&readfd);
-	FD_SET(ctp->sock, &readfd);
-	while (1){
-		if (select(ctp->sock+1, &readfd, 0, 0, NULL) < 0){
-			perror("select failed\n");
-			handler(1);
-		}
-		if (FD_ISSET(ctp->sock, &readfd)){
-			ioctl(ctp->sock, FIONREAD, &n);
-			if (n == 0){
-				/* server disconnected*/
-		         if(!ctp->usessl) {
-                   if(init_hepsocket(ctp)) initfails++;                                
-             }
-#ifdef USE_SSL             
-             else {
-                  if(initSSL(ctp)) initfails++;
-             }
-#endif /* USE_SSL */             
-
-		        if (initfails > 10)
-		        {
-		        	time_t curtime = time (NULL);
-		        	if (curtime - prevtime < 2){
-		        		pthread_mutex_lock(&lock);
-		        		fprintf(stderr, "HEP server is down... retrying after sleep...\n");
-		        		sleep(2);
-		        		pthread_mutex_unlock(&lock);
-		        	}
-		            initfails=0;
-		            prevtime = curtime;
-		        }
-			}
-		}
-	}
-}
-
 
 int init_hepsocket (struct hep_ctx *ctp) {
 

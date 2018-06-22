@@ -71,9 +71,6 @@
 
 #endif /* USE_SSL */  
 
-struct rc_info;
-typedef struct rc_info rc_info_t;
-
 #define HEP_VID_GEN	0x0000
 
 #define HEP_TID_PF	0x0001	/* IP protocol family */
@@ -94,42 +91,9 @@ typedef struct rc_info rc_info_t;
 #define HEP_TID_PL_GZ	0x0010	/* captured compressed payload (gzip/inflate) */
 #define HEP_TID_CID	0x0011	/* Internal correlation id */
 
-struct hep_ctx {
-    int sock;
-    long initfails;
-    struct addrinfo *ai;
-    struct addrinfo hints[1];
-    char *capt_host;
-    char *capt_port;
-    char *capt_password;
-    int   capt_id;
-    int hep_version;
-    int usessl;
-    int pl_compress;
-
-    struct hep_generic *hep_hdr;
-    u_int16_t hdr_len;
-
-    int sendPacketsCount;
-
-#ifdef USE_SSL
-    SSL *ssl;
-    SSL_CTX *ctx;
-#endif /* USE_SSL */
-};
-
 #ifdef USE_SSL
 SSL_CTX* initCTX(void);
 #endif /* USE_SSL */
-
-void handler(int value);
-
-void hep_gen_dtor(struct hep_ctx *);
-int hep_gen_fill(struct hep_ctx *, rc_info_t *);
-int hep_gen_append(struct hep_ctx *, u_int16_t, u_int16_t, void *, u_int16_t);
-int send_hep(struct hep_ctx *, rc_info_t *rcinfo, void *data, unsigned int len);
-int init_hepsocket_blocking(struct hep_ctx *);
-int init_hepsocket(struct hep_ctx *);
 
 /* HEPv3 types */
 
