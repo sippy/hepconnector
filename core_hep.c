@@ -344,17 +344,17 @@ static int send_data (struct hep_ctx *ctp, void *buf, unsigned int len) {
 
 	if(!ctp->usessl) {
 	        	if(send(ctp->sock, p, len, 0) == -1) {
-	    	        	printf("send error\n");
+	    	        	fprintf(stderr, "send error\n");
             			return -1;
 	        	}
           	ctp->sendPacketsCount++;
 	  /* while (sentbytes < len){
 	        	if( (r = send(ctp->sock, p, len - sentbytes, MSG_NOSIGNAL )) == -1) {
-	    	        	printf("send error\n");
+	    	        	fprintf(stderr, "send error\n");
         			return -1;
 	        	}
 	        	if (r != len - sentbytes)
-			    printf("send:multiple calls: %d\n", r);
+			    fprintf(stderr, "send:multiple calls: %d\n", r);
 
         		sentbytes += r;
 	        	p += r;
@@ -365,7 +365,7 @@ static int send_data (struct hep_ctx *ctp, void *buf, unsigned int len) {
 #ifdef USE_SSL
         else {
             if(SSL_write(ctp->ssl, buf, len) < 0) {            
-		fprintf(stderr,"capture: couldn't re-init ssl socket\r\n");
+		fprintf(stderr, "capture: couldn't re-init ssl socket\r\n");
                 return -1;                
             }
 	    ctp->sendPacketsCount++;
@@ -391,7 +391,7 @@ int init_hepsocket (struct hep_ctx *ctp) {
     }
 
     if((ctp->sock = socket(ctp->ai->ai_family, ctp->ai->ai_socktype, ctp->ai->ai_protocol)) < 0) {
-             fprintf(stderr,"Sender socket creation failed: %s\n", strerror(errno));
+             fprintf(stderr, "Sender socket creation failed: %s\n", strerror(errno));
              return 1;
     }
 
@@ -468,14 +468,14 @@ int init_hepsocket_blocking (struct hep_ctx *ctp) {
     }
 
     if((ctp->sock = socket(ctp->ai->ai_family, ctp->ai->ai_socktype, ctp->ai->ai_protocol)) < 0) {
-             fprintf(stderr,"Sender socket creation failed: %s\n", strerror(errno));
+             fprintf(stderr, "Sender socket creation failed: %s\n", strerror(errno));
              return 1;
     }
 
      if (connect(ctp->sock, ctp->ai->ai_addr, (socklen_t)(ctp->ai->ai_addrlen)) == -1) {
          select(ctp->sock + 1 , NULL, &myset, NULL, &tv);
          if (errno != EINPROGRESS) {
-             fprintf(stderr,"Sender socket creation failed: %s\n", strerror(errno));
+             fprintf(stderr, "Sender socket creation failed: %s\n", strerror(errno));
              return 1;    
           }
     }
@@ -513,17 +513,17 @@ void showCerts(SSL* ssl) {
 
         cert = SSL_get_peer_certificate(ssl); /* get the server's certificate */
         if ( cert != NULL ) {
-                fprintf(stderr,"Server certificates:\n");
+                fprintf(stderr, "Server certificates:\n");
                 line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
-                fprintf(stderr,"Subject: %s\n", line);
+                fprintf(stderr, "Subject: %s\n", line);
                 free(line);       /* free the malloc'ed string */
                 line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
-                fprintf(stderr,"Issuer: %s\n", line);
+                fprintf(stderr, "Issuer: %s\n", line);
                 free(line);       /* free the malloc'ed string */
                 X509_free(cert);     /* free the malloc'ed certificate copy */
         }
         else
-                fprintf(stderr,"No certificates.\n");
+                fprintf(stderr, "No certificates.\n");
 }
 
 static int initSSL(struct hep_ctx *ctp) {
@@ -535,7 +535,7 @@ static int initSSL(struct hep_ctx *ctp) {
         */
 
         if(init_hepsocket_blocking(ctp)) {
-                fprintf(stderr,"capture: couldn't init hep socket\r\n");
+                fprintf(stderr, "capture: couldn't init hep socket\r\n");
                 return 1;
         }
 
