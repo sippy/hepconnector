@@ -209,12 +209,12 @@ int hep_gen_fill(struct hep_ctx *ctp, rc_info_t *rcinfo)
 }
 
 int
-hep_gen_append(struct hep_ctx *ctp, u_int16_t vendor_id,
-  u_int16_t type_id, void *data, u_int16_t dlen)
+hep_gen_append(struct hep_ctx *ctp, uint16_t vendor_id,
+  uint16_t type_id, void *data, uint16_t dlen)
 {
     struct hep_generic *hg;
     hep_chunk_t *chunk;
-    u_int16_t tlen;
+    uint16_t tlen;
 
     tlen = sizeof(hep_chunk_t) + dlen;
     hg = realloc(ctp->hep_hdr, ctp->hdr_len + tlen);

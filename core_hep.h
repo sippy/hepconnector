@@ -98,31 +98,31 @@ SSL_CTX* initCTX(void);
 /* HEPv3 types */
 
 struct hep_chunk {
-       u_int16_t vendor_id;
-       u_int16_t type_id;
-       u_int16_t length;
-       u_int8_t data[0];
+       uint16_t vendor_id;
+       uint16_t type_id;
+       uint16_t length;
+       uint8_t data[0];
 } __attribute__((packed));
 
 typedef struct hep_chunk hep_chunk_t;
 
 struct hep_chunk_uint8 {
        hep_chunk_t chunk;
-       u_int8_t data;
+       uint8_t data;
 } __attribute__((packed));
 
 typedef struct hep_chunk_uint8 hep_chunk_uint8_t;
 
 struct hep_chunk_uint16 {
        hep_chunk_t chunk;
-       u_int16_t data;
+       uint16_t data;
 } __attribute__((packed));
 
 typedef struct hep_chunk_uint16 hep_chunk_uint16_t;
 
 struct hep_chunk_uint32 {
        hep_chunk_t chunk;
-       u_int32_t data;
+       uint32_t data;
 } __attribute__((packed));
 
 typedef struct hep_chunk_uint32 hep_chunk_uint32_t;
@@ -150,7 +150,7 @@ typedef struct hep_chunk_ip6 hep_chunk_ip6_t;
 
 struct hep_ctrl {
     char id[4];
-    u_int16_t length;
+    uint16_t length;
 } __attribute__((packed));
 
 typedef struct hep_ctrl hep_ctrl_t;
@@ -201,18 +201,18 @@ static hep_generic_t HDR_HEP = {
 
 
 struct hep_hdr{
-    u_int8_t hp_v;            /* version */
-    u_int8_t hp_l;            /* length */
-    u_int8_t hp_f;            /* family */
-    u_int8_t hp_p;            /* protocol */
-    u_int16_t hp_sport;       /* source port */
-    u_int16_t hp_dport;       /* destination port */
+    uint8_t hp_v;            /* version */
+    uint8_t hp_l;            /* length */
+    uint8_t hp_f;            /* family */
+    uint8_t hp_p;            /* protocol */
+    uint16_t hp_sport;       /* source port */
+    uint16_t hp_dport;       /* destination port */
 };
 
 struct hep_timehdr{
-    u_int32_t tv_sec;         /* seconds */
-    u_int32_t tv_usec;        /* useconds */
-    u_int16_t captid;         /* Capture ID node */
+    uint32_t tv_sec;         /* seconds */
+    uint32_t tv_usec;        /* useconds */
+    uint16_t captid;         /* Capture ID node */
 };
 
 struct hep_iphdr{
