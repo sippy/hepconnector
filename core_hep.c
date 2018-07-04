@@ -240,7 +240,6 @@ hep_gen_append(struct hep_ctx *ctp, u_int16_t vendor_id,
 int
 send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
 {
-    static int errors = 0;
     int sendzip;
 #ifdef USE_ZLIB
     void *dtp;
@@ -272,42 +271,42 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
     /* IPv4 */
     if(rcinfo->ip_family == AF_INET) {
         /* SRC IP */
-        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_SA4, rcinfo->src.p4, sizeof(*rcinfo->src.p4), 0);
+        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_SA4, rcinfo->src.p4, sizeof(*rcinfo->src.p4), -1);
 
         /* DST IP */
-        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_DA4, rcinfo->dst.p4, sizeof(*rcinfo->dst.p4), 0);
+        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_DA4, rcinfo->dst.p4, sizeof(*rcinfo->dst.p4), -1);
     }
 #ifdef USE_IPV6
       /* IPv6 */
     else if(rcinfo->ip_family == AF_INET6) {
         /* SRC IPv6 */
-        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_SA6, rcinfo->src.p6, sizeof(*rcinfo->src.p6), 0);
+        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_SA6, rcinfo->src.p6, sizeof(*rcinfo->src.p6), -1);
         
         /* DST IPv6 */
-        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_DA6, rcinfo->dst.p6, sizeof(*rcinfo->dst.p6), 0);
+        HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_DA6, rcinfo->dst.p6, sizeof(*rcinfo->dst.p6), -1);
     }
 #endif
 
     /* Payload */
-    HGA_O_RET(ctp, HEP_VID_GEN, sendzip ? HEP_TID_PL_GZ : HEP_TID_PL_RAW, data, len, 0);
+    HGA_O_RET(ctp, HEP_VID_GEN, sendzip ? HEP_TID_PL_GZ : HEP_TID_PL_RAW, data, len, -1);
 
     /* auth key */
     if(ctp->capt_password != NULL) {
           /* Auth key */
-          HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_AKEY, ctp->capt_password, strlen(ctp->capt_password), 0);
+          HGA_O_RET(ctp, HEP_VID_GEN, HEP_TID_AKEY, ctp->capt_password, strlen(ctp->capt_password), -1);
     }
 
     //fprintf(stderr, "LEN: [%d] vs [%d] = IPLEN:[%d] LEN:[%d] CH:[%d]\n", ctp->hep_hdr->header.length, ntohs(ctp->hep_hdr->header.length), iplen, len, sizeof(struct hep_chunk));
 
     /* make sleep after 100 errors */
-     if(errors > 50) {
+     if(ctp->errorsCount > 50) {
         fprintf(stderr, "HEP server is down... retrying after sleep...\n");
 	if(!ctp->usessl) {
 	     sleep(2);
              if(init_hepsocket_blocking(ctp)) { 
 				ctp->initfails++; 	
 	     	     }
-	     	     errors=0;
+	     	     ctp->errorsCount = 0;
         }
 #ifdef USE_SSL
         else {
@@ -315,7 +314,7 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
 		 if(initSSL(ctp)) {
 	 	  	ctp->initfails++;
 	    		}
-	    		errors=0;
+	    		ctp->errorsCount = 0;
        	 }
 #endif /* USE SSL */
 
@@ -325,7 +324,7 @@ send_hep(struct hep_ctx *ctp, rc_info_t *rcinfo, void *data, unsigned int len)
     ctp->hep_hdr->header.length = htons(ctp->hdr_len);
     /* send this packet out of our socket */
     if(send_data(ctp, ctp->hep_hdr, ctp->hdr_len)) {
-        errors++;    
+        ctp->errorsCount++;    
     }
 
 #ifdef USE_ZLIB

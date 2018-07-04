@@ -68,7 +68,8 @@ struct hep_ctx {
     struct hep_generic *hep_hdr;
     u_int16_t hdr_len;
 
-    int sendPacketsCount;
+    uint64_t sendPacketsCount;
+    uint64_t errorsCount;
 
 #ifdef USE_SSL
     SSL *ssl;
