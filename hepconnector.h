@@ -79,7 +79,7 @@ struct hep_ctx {
 
 void hep_gen_dtor(struct hep_ctx *);
 int hep_gen_fill(struct hep_ctx *, rc_info_t *);
-int hep_gen_append(struct hep_ctx *, uint16_t, uint16_t, void *, uint16_t);
+int hep_gen_append(struct hep_ctx *, uint16_t, uint16_t, const void *, uint16_t);
 int send_hep(struct hep_ctx *, rc_info_t *rcinfo, void *data, unsigned int len);
 int init_hepsocket_blocking(struct hep_ctx *);
 int init_hepsocket(struct hep_ctx *);
