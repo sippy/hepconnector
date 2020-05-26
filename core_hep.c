@@ -376,81 +376,46 @@ static int send_data (struct hep_ctx *ctp, void *buf, unsigned int len) {
 
 int init_hepsocket (struct hep_ctx *ctp) {
 
-    struct timeval tv; 
-    socklen_t lon;
     long arg;
-    fd_set myset;
-    int valopt, res, ret = 0, s;
+    int res, s;
 
-    if(ctp->sock) close(ctp->sock);
+    if(ctp->sock) {
+        close(ctp->sock);
+        ctp->sock = 0;
+    }
 
-    if ((s = getaddrinfo(ctp->capt_host, ctp->capt_port, ctp->hints, &ctp->ai)) != 0) {            
-            fprintf(stderr, "capture: getaddrinfo: %s\n", gai_strerror(s));
-            return 2;
+    if ((s = getaddrinfo(ctp->capt_host, ctp->capt_port, ctp->hints, &ctp->ai)) != 0) {
+        fprintf(stderr, "capture: getaddrinfo: %s\n", gai_strerror(s));
+        goto e0;
     }
 
     if((ctp->sock = socket(ctp->ai->ai_family, ctp->ai->ai_socktype, ctp->ai->ai_protocol)) < 0) {
-             fprintf(stderr, "Sender socket creation failed: %s\n", strerror(errno));
-             return 1;
+        fprintf(stderr, "Sender socket creation failed: %s\n", strerror(errno));
+        goto e0;
     }
 
-    // Set non-blocking 
-    if((arg = fcntl(ctp->sock, F_GETFL, NULL)) < 0) { 
-        fprintf(stderr, "Error fcntl(..., F_GETFL) (%s)\n", strerror(errno)); 
-        close(ctp->sock);        
-        return 1;
-    } 
-    arg |= O_NONBLOCK; 
-    if( fcntl(ctp->sock, F_SETFL, arg) < 0) { 
-        fprintf(stderr, "Error fcntl(..., F_SETFL) (%s)\n", strerror(errno)); 
-        close(ctp->sock);        
-        return 1; 
-    }        
-
-    if((res = connect(ctp->sock, ctp->ai->ai_addr, (socklen_t)(ctp->ai->ai_addrlen))) < 0) {
-	if (errno == EINPROGRESS) { 
-	        do { 
-	           tv.tv_sec = 5; 
-	           tv.tv_usec = 0; 
-        	   FD_ZERO(&myset); 
-	           FD_SET(ctp->sock, &myset); 
-
-        	   res = select(ctp->sock + 1 , NULL, &myset, NULL, &tv); 
-           
-	           if (res < 0 && errno != EINTR) { 
-        	      fprintf(stderr, "Error connecting %d - %s\n", errno, strerror(errno)); 
-		      close(ctp->sock); 
-		      ret = 1;
-		      break;
-	           } 
-        	   else if (res > 0) { 
-        	      // Socket selected for write 
-              
-	              lon = sizeof(int); 
-        	      if (getsockopt(ctp->sock, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon) < 0) { 
-			 close(ctp->sock); 
-        	         fprintf(stderr, "Error in getsockopt() %d - %s\n", errno, strerror(errno)); 
-        	         ret = 2;
-	              } 	
-        	      // Check the value returned... 
-	              if (valopt) { 
-			 close(ctp->sock); 
-	                 fprintf(stderr, "Error in delayed connection() %d - %s\n", valopt, strerror(valopt)); 
-	                 ret = 3;
-        	      } 
-	              break; 
-	           } 
-        	   else { 
-		      close(ctp->sock); 
-	              fprintf(stderr, "Timeout in select() - Cancelling!\n"); 
-	              ret = 4; 
-	              break;
-	           } 
-        	} while (1); 
-	}
+    res = connect(ctp->sock, ctp->ai->ai_addr, (socklen_t)(ctp->ai->ai_addrlen));
+    if(res < 0) {
+        goto e1;
     }
 
-    return ret;
+    // Set non-blocking
+    if((arg = fcntl(ctp->sock, F_GETFL, NULL)) < 0) {
+        fprintf(stderr, "Error fcntl(..., F_GETFL) (%s)\n", strerror(errno));
+        goto e1;
+    }
+    arg |= O_NONBLOCK;
+    if( fcntl(ctp->sock, F_SETFL, arg) < 0) {
+        fprintf(stderr, "Error fcntl(..., F_SETFL) (%s)\n", strerror(errno));
+        goto e1;
+    }
+
+    return (0);
+e1:
+    close(ctp->sock);
+    ctp->sock = 0;
+e0:
+    return (-1);
 }
 
 int init_hepsocket_blocking (struct hep_ctx *ctp) {
