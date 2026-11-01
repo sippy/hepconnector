@@ -202,7 +202,7 @@ int hep_gen_fill(struct hep_ctx *ctp, rc_info_t *rcinfo)
     /* Capture ID */
     hg->capt_id.chunk.vendor_id = htons(HEP_VID_GEN);
     hg->capt_id.chunk.type_id   = htons(HEP_TID_CAID);
-    hg->capt_id.data = htons(ctp->capt_id);
+    hg->capt_id.data = htonl(ctp->capt_id);
     hg->capt_id.chunk.length = htons(sizeof(hg->capt_id));
 
     return (0);
